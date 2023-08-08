@@ -29,39 +29,30 @@
 #ifndef __LCD_1IN14_H
 #define __LCD_1IN14_H
 
-#include "DEV_Config.h"
 #include <stdint.h>
-
-#include <stdlib.h>     //itoa()
+#include <stdlib.h>
 #include <stdio.h>
-
 
 #define LCD_1IN14_HEIGHT 240
 #define LCD_1IN14_WIDTH 135
-
-
-#define HORIZONTAL 0
-#define VERTICAL   1
+#define LCD_1IN14_SIZE (LCD_1IN14_HEIGHT*LCD_1IN14_WIDTH)
 
 #define LCD_1IN14_SetBacklight(Value) ; 
 
-
-typedef struct{
-    UWORD WIDTH;
-    UWORD HEIGHT;
-    UBYTE SCAN_DIR;
-}LCD_1IN14_ATTRIBUTES;
-extern LCD_1IN14_ATTRIBUTES LCD_1IN14;
+typedef enum lcd_scan_dir_t {
+    LCD_SCAN_DIR_HORIZONTAL = 0,
+    LCD_SCAN_DIR_VERTICAL = 1,
+} lcd_scan_dir_t;
 
 /********************************************************************************
-function:	
-			Macro definition variable name
+function: 
+    Macro definition variable name
 ********************************************************************************/
-void LCD_1IN14_Init(UBYTE Scan_dir);
-void LCD_1IN14_Clear(UWORD Color);
-void LCD_1IN14_Display(UWORD *Image);
-void LCD_1IN14_DisplayWindows(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend, UWORD *Image);
-void LCD_1IN14_DisplayPoint(UWORD X, UWORD Y, UWORD Color);
+void lcd_init();
+void lcd_clear(uint16_t color);
+void lcd_draw_framebuf(const uint16_t* framebuf);
+void lcd_set_scan_direction(lcd_scan_dir_t scan_dir);
+void lcd_set_backlight_brightness(uint8_t value);
+void lcd_set_draw_area(uint16_t x_start, uint16_t x_end, uint16_t y_start, uint16_t y_end);
 
-void Handler_1IN14_LCD(int signo);
 #endif
