@@ -16,7 +16,7 @@ typedef struct wav_audio_t {
     wav_format_t format;
     uint16_t num_channels;
     uint32_t sample_rate;
-    uint8_t byte_rate; // bytes per second
+    uint32_t byte_rate; // bytes per second
     uint8_t block_size; // bytes per block
     uint32_t bit_depth; // bit per sample
     uint32_t data_size;
