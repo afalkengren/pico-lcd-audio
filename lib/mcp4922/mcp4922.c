@@ -12,7 +12,7 @@
 #define PIN_SCK 18
 #define PIN_SDI 19
 #define PIN_CS 17
-#define PIN_LDAC 16
+#define PIN_LDAC 15
 
 #define UINT12_MAX ((1 << 12) - 1)
 
