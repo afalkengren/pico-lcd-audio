@@ -261,6 +261,8 @@ void framerate_print_ifvalid(framerate_t* fr) {
     fr->count = 0;
 }
 
+
+
 void play_wav(uint8_t* wav) {
     wav_file = wav_load((uint8_t*)test_wav);
     
@@ -283,6 +285,13 @@ void play_wav(uint8_t* wav) {
     free(wav_file);
 }
 
+void callback_play(void) {
+    multicore_reset_core1();
+    multicore_launch_core1((void*)play_wav);    
+}
+
+int BUTTON_GPIO = 14;
+
 int main(void) {
     stdio_init_all();
 
@@ -291,12 +300,20 @@ int main(void) {
     
     lcd_clear(COLOR_WHITE);
 
+    gpio_init(BUTTON_GPIO);
+    gpio_set_dir(BUTTON_GPIO, GPIO_IN);
+    gpio_pull_up(BUTTON_GPIO);
+    
+
     // frame rate counter
     // framerate_t framerate = framerate_new();
     
-    multicore_reset_core1();
-    multicore_launch_core1((void*)play_wav);    
-
+    while(true) {
+        if (!gpio_get(BUTTON_GPIO)) {
+            callback_play();
+            busy_wait_us(100);
+        }
+    }
     //graphics_cleanup();
     
     return 0;
