@@ -5,10 +5,10 @@
 #include "wavaudio.h"
 
 typedef enum wav_format_t {
-    WAVE_FORMAT_PCM = 1,
-    WAVE_FORMAT_IEEE_FLOAT = 3,
-    WAVE_FORMAT_ALAW = 6,
-    WAVE_FORMAT_MULAW = 7,
+    WAV_FORMAT_PCM = 1,
+    WAV_FORMAT_IEEE_FLOAT = 3,
+    WAV_FORMAT_ALAW = 6,
+    WAV_FORMAT_MULAW = 7,
     // WAVE_FORMAT_EXTENSIBLE = 0xFFFE,
 } wav_format_t;
 
@@ -25,8 +25,8 @@ typedef struct wav_audio_t {
     const uint8_t* data_pos;
 } wav_audio_t;
 
-static wav_sample_t wav_next8(wav_audio_t* wav);
-static wav_sample_t wav_next16(wav_audio_t* wav);
+static wav_result_t wav_next_pcm(wav_audio_t* wav_audio, wav_sample_t* sample, uint8_t n_bytes);
+static wav_result_t wav_next_float_32(wav_audio_t* wav_audio, wav_sample_t* sample);
 
 int wav_is_wav(const uint8_t* data) {
     const char* format = &data[8];
@@ -92,44 +92,68 @@ void wav_set_pos_offset(wav_audio_t* wav, const wav_pos_t* pos, uint8_t offset) 
     wav_set_pos(wav, new_pos);
 }
 
-wav_sample_t wav_next(wav_audio_t* wav_audio) {
+wav_result_t wav_next(wav_audio_t* wav_audio, wav_sample_t* sample) {
     // if eof then just return empty
-    if (wav_is_eof(wav_audio)) return (wav_sample_t){0, 0};
+    if (wav_is_eof(wav_audio)) return WAV_RESULT_EOF;
 
-    if (wav_audio->bit_depth == 8) {
-        return wav_next8(wav_audio);
-    } else if (wav_audio->bit_depth == 16) {
-        return wav_next16(wav_audio);
+    wav_result_t res = WAV_RESULT_UNKNOWN;
+    switch(wav_audio->bit_depth) {
+        case 8:
+            res = wav_next_pcm(wav_audio, sample, 1);
+            break;
+        case 16:
+            res = wav_next_pcm(wav_audio, sample, 2);
+            break;
+        case 24:
+            res = wav_next_pcm(wav_audio, sample, 3);
+            break;
+        case 32:
+            res = wav_next_float_32(wav_audio, &sample);
+            break;
     }
-
-    return (wav_sample_t){0, 0}; // ??? do something...
+    return res;
 }
 
 // static functions
-static wav_sample_t wav_next8(wav_audio_t* wav_audio) {
-    wav_sample_t sample;
-    sample.left = *(int8_t*)wav_audio->data_pos;
-
-    // if stereo, change data pointer. if not just use same ptr
-    if (wav_audio->num_channels == 2) {
+static wav_result_t wav_next_pcm(wav_audio_t* wav_audio, wav_sample_t* sample, uint8_t n_bytes) {
+    if (wav_audio->format != WAV_FORMAT_PCM) return WAV_RESULT_UNSUPPORTED;
+    bool is_stereo = (wav_audio->num_channels == 2);
+    if (n_bytes == 1) {
+        // 8 byte bit depth is always unsigned as per the spec
+        sample->left = (*(uint8_t*)wav_audio->data_pos) << 8;
+        // if stereo, change data pointer. if not just use same ptr
+        if (wav_is_stereo(wav_audio)) wav_audio->data_pos += 1;
+        sample->right = (*(uint8_t*)wav_audio->data_pos) << 8;
         wav_audio->data_pos += 1;
+    } else {
+        // take top two bytes, will still be valid int16 with reduced precision
+        // signed sample, convert to unsigned for DAC
+        sample->left = *(int16_t*)wav_audio->data_pos + (INT16_MAX + 1);
+        
+        // if stereo, change data pointer. if not just use same ptr
+        if (wav_is_stereo(wav_audio)) {
+            wav_audio->data_pos += n_bytes;
+            sample->right = *(int16_t*)wav_audio->data_pos + (INT16_MAX + 1);
+        } else {
+            sample->right = sample->left;
+        }
+
+        wav_audio->data_pos += n_bytes;
     }
 
-    sample.right = *(int8_t*)wav_audio->data_pos; 
-    wav_audio->data_pos += 1;
     return sample;
 }
 
-static wav_sample_t wav_next16(wav_audio_t* wav_audio) {
-    wav_sample_t sample;
-    sample.left = *(int16_t*)wav_audio->data_pos;
+static wav_result_t wav_next_float_32(wav_audio_t* wav_audio, wav_sample_t* sample) {
+    if (wav_audio->format != WAV_FORMAT_IEEE_FLOAT) return WAV_RESULT_UNSUPPORTED;
+    sample->left = *(float*)wav_audio->data_pos;
 
     // if stereo, change data pointer. if not just use same ptr
     if (wav_audio->num_channels == 2) {
-        wav_audio->data_pos += 2;
+        wav_audio->data_pos += 4;
     }
     
-    sample.right = *(int16_t*)wav_audio->data_pos;
-    wav_audio->data_pos += 2;
+    sample->right = *(float*)wav_audio->data_pos;
+    wav_audio->data_pos += 4;
     return sample;
 }

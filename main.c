@@ -78,7 +78,7 @@ bool frame_is_ready;
 // }
 
 void draw_y_for_x(unsigned x) {
-    int16_t sample = wav_next(wav_file).left;
+    int16_t sample = 0; // wav_next(wav_file).left;
 
     // If signal clips the screen, then adjust gain higher... TODO should be a windowed AGC
     // use div_s32s32? div_s32s32_unsafe?
@@ -261,8 +261,6 @@ void framerate_print_ifvalid(framerate_t* fr) {
     fr->count = 0;
 }
 
-
-
 void play_wav(uint8_t* wav) {
     wav_file = wav_load((uint8_t*)test_wav);
     
@@ -270,10 +268,9 @@ void play_wav(uint8_t* wav) {
     uint32_t wav_period_us = wav_get_sample_period_us(wav_file); 
     absolute_time_t t_audio_target = get_absolute_time();
 
-    while(!wav_is_eof(wav_file)) {
-        // We get a signed sample, but DAC requires a positive input, so bias to half of UINT16_MAX
-        uint16_t sample = wav_next(wav_file).left + (INT16_MAX + 1);
-        mcp4922_mono_write(&sample);
+    wav_sample_t sample;
+    while(wav_next(wav_file, &sample)) {
+        mcp4922_mono_write(&sample.left);
 
         // Calculate the next time we should resume this loop.
         t_audio_target = delayed_by_us(t_audio_target, wav_period_us);

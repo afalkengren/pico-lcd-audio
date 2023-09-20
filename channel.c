@@ -22,6 +22,7 @@ enum CHANNEL_FLAGS {
 
 typedef struct channel_t {
     wav_audio_t* src;
+    int8_t gain;
     channel_state_t state;
     channel_flags_t flags;
 } channel_t;
@@ -64,9 +65,41 @@ void channel_restart(channel_t* ch) {
     ch->state = CHANNEL_STATE_RESTART;
 }
 
-void channel_next(channel_t* ch) {
+// process next state for one channel (next sample or stop)
+// TODO: handle WAVE and other formats
+channel_error_t channel_next(channel_t* ch, wav_sample_t* sample) {
+    return CHANNEL_ERROR
     switch(ch->state) {
         case CHANNEL_STATE_STOP:
-            wav_
+            wav_reset(ch->src);
+            return CHANNEL_ERROR_INVALID;
+        case CHANNEL_STATE_RESTART:
+            // restart should reset then following into start
+            wav_reset(ch->src);
+            ch->state = CHANNEL_STATE_PLAYING;
+        case CHANNEL_STATE_START:
+        case CHANNEL_STATE_PLAYING:
+            wav_result_t res = wav_next(ch->src, sample);
+            if (res == WAV_RESULT_SUCCESS) {
+                // TODO: handle gain. unknown if processing power enough
+                return CHANNEL_ERROR_SUCCESS;
+            }
+            // if not success, stop channel and reset
+            ch->state = CHANNEL_STATE_STOP;
+            return CHANNEL_ERROR_INVALID;
+        default:
+            return CHANNEL_ERROR_UNKNOWN;
     }
+}
+
+// process all channels and blend samples
+// TODO: handle different sampling rates
+channel_error_t channel_blend_next(channel_t* chs, uint8_t size, wav_sample_t* sample) {
+    for (uint8_t i = 0; i < size; ++i) {
+        wav_sample_t sample_channel;
+        if (channel_next(chs[i], &sample_channel) == WAV_RESULT_SUCCESS) {
+            sample += sample_channel;
+        }
+    }
+    return CHANNEL_ERROR_SUCCESS;
 }
