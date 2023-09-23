@@ -36,9 +36,12 @@
 
 #include "lcd1n14.h"
 #include "mcp4922.h"
+#include "channel.h"
 #include "wavaudio.h"
 
-#include "testwav.h"
+#include "wav/wav_kick.h"
+#include "wav/wav_snare.h"
+
 // #include "dft.h"
 
 #define LCD_HEIGHT LCD_1IN14_WIDTH
@@ -58,7 +61,6 @@
 
 #define PIXEL_AT(X, Y) (X + (Y * LCD_WIDTH))
 
-wav_audio_t* wav_file;
 unsigned n_samples;
 
 unsigned fft_bins;
@@ -276,7 +278,7 @@ void play_wav(uint8_t* wav) {
         t_audio_target = delayed_by_us(t_audio_target, wav_period_us);
         // printf("Time to next sample: %llu us\n", absolute_time_diff_us(get_absolute_time(), t_audio_target));
         
-        // sleep_until attempts to use low power sleep. We don't really need that.
+        // sleep_until attempts to use low power sle ep. We don't really need that.
         busy_wait_until(t_audio_target);
     }
     free(wav_file);
@@ -287,7 +289,9 @@ void callback_play(void) {
     multicore_launch_core1((void*)play_wav);    
 }
 
-int BUTTON_GPIO = 14;
+#define BUTTON_COUNT 2
+int BUTTON1_PIN = 14;
+int BUTTON2_PIN = 7;
 
 int main(void) {
     stdio_init_all();
@@ -297,18 +301,21 @@ int main(void) {
     
     lcd_clear(COLOR_WHITE);
 
-    gpio_init(BUTTON_GPIO);
-    gpio_set_dir(BUTTON_GPIO, GPIO_IN);
-    gpio_pull_up(BUTTON_GPIO);
+    channel_t* channels[BUTTON_COUNT];
+    channels[0] = channel_new(wav_kick, BUTTON1_PIN);
+    channels[1] = channel_new(wav_snare, BUTTON2_PIN);
     
 
     // frame rate counter
     // framerate_t framerate = framerate_new();
     
     while(true) {
-        if (!gpio_get(BUTTON_GPIO)) {
-            callback_play();
-            busy_wait_us(100);
+        for (uint8_t i = 0; i < BUTTON_COUNT; ++i) {
+            channel_t* ch = channels[i];
+            if (!gpio_get(channel_get_pin(ch))) {
+                channel_play(ch);
+                busy_wait_us(100);
+            }
         }
     }
     //graphics_cleanup();
