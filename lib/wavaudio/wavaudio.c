@@ -28,6 +28,11 @@ typedef struct wav_audio_t {
 static wav_result_t wav_next_pcm(wav_audio_t* wav_audio, wav_sample_t* sample, uint8_t n_bytes);
 static wav_result_t wav_next_float_32(wav_audio_t* wav_audio, wav_sample_t* sample);
 
+void wav_add_samples(wav_sample_t* a, wav_sample_t* b) {
+    a->left += b->left;
+    a->right += b->right;
+}
+
 int wav_is_wav(const uint8_t* data) {
     const char* format = &data[8];
     return (format == "WAVE");
@@ -108,7 +113,7 @@ wav_result_t wav_next(wav_audio_t* wav_audio, wav_sample_t* sample) {
             res = wav_next_pcm(wav_audio, sample, 3);
             break;
         case 32:
-            res = wav_next_float_32(wav_audio, &sample);
+            res = wav_next_float_32(wav_audio, sample);
             break;
     }
     return res;
@@ -141,7 +146,7 @@ static wav_result_t wav_next_pcm(wav_audio_t* wav_audio, wav_sample_t* sample, u
         wav_audio->data_pos += n_bytes;
     }
 
-    return sample;
+    return WAV_RESULT_SUCCESS;
 }
 
 static wav_result_t wav_next_float_32(wav_audio_t* wav_audio, wav_sample_t* sample) {
@@ -155,5 +160,5 @@ static wav_result_t wav_next_float_32(wav_audio_t* wav_audio, wav_sample_t* samp
     
     sample->right = *(float*)wav_audio->data_pos;
     wav_audio->data_pos += 4;
-    return sample;
+    return WAV_RESULT_SUCCESS;
 }

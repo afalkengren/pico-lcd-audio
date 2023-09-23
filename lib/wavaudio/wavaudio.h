@@ -19,6 +19,8 @@ typedef struct wav_sample_t {
     uint16_t right;
 } wav_sample_t;
 
+void wav_add_samples(wav_sample_t* a, wav_sample_t* b);
+
 int wav_is_wav(const uint8_t* data);
 wav_audio_t* wav_load(const uint8_t* data);
 void wav_reset(wav_audio_t* wav);

@@ -263,35 +263,52 @@ void framerate_print_ifvalid(framerate_t* fr) {
     fr->count = 0;
 }
 
-void play_wav(uint8_t* wav) {
-    wav_file = wav_load((uint8_t*)test_wav);
+// void play_wav(uint8_t* wav) {
+//     wav_file = wav_load((uint8_t*)test_wav);
     
-    // We need the sample period to work out how much to sleep
-    uint32_t wav_period_us = wav_get_sample_period_us(wav_file); 
+//     // We need the sample period to work out how much to sleep
+//     uint32_t wav_period_us = wav_get_sample_period_us(wav_file); 
+//     absolute_time_t t_audio_target = get_absolute_time();
+
+//     wav_sample_t sample;
+//     while(wav_next(wav_file, &sample)) {
+//         mcp4922_mono_write(&sample.left);
+
+//         // Calculate the next time we should resume this loop.
+//         t_audio_target = delayed_by_us(t_audio_target, wav_period_us);
+//         // printf("Time to next sample: %llu us\n", absolute_time_diff_us(get_absolute_time(), t_audio_target));
+        
+//         // sleep_until attempts to use low power sleep. We don't really need that.
+//         busy_wait_until(t_audio_target);
+//     }
+//     free(wav_file);
+// }
+
+#define BUTTON_COUNT 2
+channel_t* channels[BUTTON_COUNT];
+int BUTTON1_PIN = 14;
+int BUTTON2_PIN = 7;
+
+void core1_channel_loop() {
+    uint32_t wav_period_us = 1000000/44100; 
     absolute_time_t t_audio_target = get_absolute_time();
-
     wav_sample_t sample;
-    while(wav_next(wav_file, &sample)) {
+    while (true) {
+        channel_blend_next(channels, BUTTON_COUNT, &sample);
         mcp4922_mono_write(&sample.left);
-
         // Calculate the next time we should resume this loop.
         t_audio_target = delayed_by_us(t_audio_target, wav_period_us);
         // printf("Time to next sample: %llu us\n", absolute_time_diff_us(get_absolute_time(), t_audio_target));
         
-        // sleep_until attempts to use low power sle ep. We don't really need that.
+        // sleep_until attempts to use low power sleep. We don't really need that.
         busy_wait_until(t_audio_target);
     }
-    free(wav_file);
 }
 
-void callback_play(void) {
+void start_core1_channel_loop(void) {
     multicore_reset_core1();
-    multicore_launch_core1((void*)play_wav);    
+    multicore_launch_core1(core1_channel_loop);    
 }
-
-#define BUTTON_COUNT 2
-int BUTTON1_PIN = 14;
-int BUTTON2_PIN = 7;
 
 int main(void) {
     stdio_init_all();
@@ -301,10 +318,10 @@ int main(void) {
     
     lcd_clear(COLOR_WHITE);
 
-    channel_t* channels[BUTTON_COUNT];
     channels[0] = channel_new(wav_kick, BUTTON1_PIN);
     channels[1] = channel_new(wav_snare, BUTTON2_PIN);
     
+    start_core1_channel_loop();
 
     // frame rate counter
     // framerate_t framerate = framerate_new();
@@ -313,8 +330,8 @@ int main(void) {
         for (uint8_t i = 0; i < BUTTON_COUNT; ++i) {
             channel_t* ch = channels[i];
             if (!gpio_get(channel_get_pin(ch))) {
+                printf("Button %d pressed", i);
                 channel_play(ch);
-                busy_wait_us(100);
             }
         }
     }

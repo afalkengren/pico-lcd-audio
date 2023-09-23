@@ -15,7 +15,7 @@ include_directories(./lib/mcp4922)
 include_directories(./lib/wavaudio)
 
 # create an executable file
-add_executable(main main.c)
+add_executable(main src/main.c src/channel.c)
 
 # enable usb output, disable uart output
 pico_enable_stdio_usb(main 1)
