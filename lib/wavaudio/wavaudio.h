@@ -26,7 +26,7 @@ void wav_add_samples(wav_sample_t* a, wav_sample_t* b);
 
 int wav_is_wav(const uint8_t* data);
 wav_audio_t* wav_new(const uint8_t* data);
-wav_result_t* wav_load(wav_audio_t* wav);
+wav_result_t wav_load(wav_audio_t* wav);
 void wav_reset(wav_audio_t* wav);
 int wav_is_eof(const wav_audio_t* wav);
 int wav_is_stereo(const wav_audio_t* wav);

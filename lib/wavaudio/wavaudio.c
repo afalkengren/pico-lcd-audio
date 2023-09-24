@@ -45,7 +45,7 @@ wav_audio_t* wav_new(const uint8_t* data) {
     return wav;
 }
 
-wav_result_t* wav_load(wav_audio_t* wav) {
+wav_result_t wav_load(wav_audio_t* wav) {
     // subchunk1 size at offset 16 (not incl. current offset at 20)
     uint32_t data_head = *(uint32_t*)&wav->src[16] + 20;
 
@@ -56,7 +56,7 @@ wav_result_t* wav_load(wav_audio_t* wav) {
     wav->block_size = *(uint16_t*)&wav->src[32];
     wav->bit_depth = *(uint16_t*)&wav->src[34];
     
-    char chunk2_id[4] = *(char*)&wav->src[data_head];
+    char* chunk2_id = (char*)&wav->src[data_head];
     if (chunk2_id != "data") {
         free(wav);
         return WAV_RESULT_LOAD_FAILED;
