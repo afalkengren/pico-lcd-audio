@@ -13,6 +13,7 @@ typedef enum wav_format_t {
 } wav_format_t;
 
 typedef struct wav_audio_t {
+    const uint8_t* src;
     wav_format_t format;
     uint16_t num_channels;
     uint32_t sample_rate;
@@ -38,21 +39,33 @@ int wav_is_wav(const uint8_t* data) {
     return (format == "WAVE");
 }
 
-// this assumes that subchunk1 is PCM (16 bytes)
-// should use subchunk1size at offset 16...?
-wav_audio_t* wav_load(const uint8_t* data) {
-    wav_audio_t* wav = malloc(sizeof(wav_audio_t));
-    wav->format = *(uint16_t*)&data[20];
-    wav->num_channels = *(uint16_t*)&data[22];
-    wav->sample_rate = *(uint32_t*)&data[24];
-    wav->byte_rate = *(uint32_t*)&data[28];
-    wav->block_size = *(uint16_t*)&data[32];
-    wav->bit_depth = *(uint16_t*)&data[34];
-    wav->data_size = *(uint32_t*)&data[40];
-    wav->data_head = &data[44];
-    wav->data_end = &data[44] + wav->data_size - 1;
-    wav->data_pos = &data[44];
+wav_audio_t* wav_new(const uint8_t* data) {
+    wav_audio_t* wav = (wav_audio_t*)malloc(sizeof(wav_audio_t));
+    wav->src = data;
     return wav;
+}
+
+wav_result_t* wav_load(wav_audio_t* wav) {
+    // subchunk1 size at offset 16 (not incl. current offset at 20)
+    uint32_t data_head = *(uint32_t*)&wav->src[16] + 20;
+
+    wav->format = *(uint16_t*)&wav->src[20];
+    wav->num_channels = *(uint16_t*)&wav->src[22];
+    wav->sample_rate = *(uint32_t*)&wav->src[24];
+    wav->byte_rate = *(uint32_t*)&wav->src[28];
+    wav->block_size = *(uint16_t*)&wav->src[32];
+    wav->bit_depth = *(uint16_t*)&wav->src[34];
+    
+    char chunk2_id[4] = *(char*)&wav->src[data_head];
+    if (chunk2_id != "data") {
+        free(wav);
+        return WAV_RESULT_LOAD_FAILED;
+    }
+    wav->data_size = *(uint32_t*)&wav->src[data_head + 4];
+    wav->data_head = &wav->src[data_head + 8];
+    wav->data_end = &wav->src[data_head + 8] + wav->data_size - 1;
+    wav->data_pos = &wav->src[data_head + 8];
+    return WAV_RESULT_SUCCESS;
 }
 
 void wav_reset(wav_audio_t* wav) {

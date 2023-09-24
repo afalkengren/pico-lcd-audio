@@ -8,6 +8,9 @@ typedef enum wav_result_t {
     WAV_RESULT_SUCCESS = 0,
     WAV_RESULT_EOF = 1,
     WAV_RESULT_UNSUPPORTED = 2,
+
+    WAV_RESULT_LOAD_FAILED = 15,
+
     WAV_RESULT_UNKNOWN = 255,
 } wav_result_t;
 
@@ -22,7 +25,8 @@ typedef struct wav_sample_t {
 void wav_add_samples(wav_sample_t* a, wav_sample_t* b);
 
 int wav_is_wav(const uint8_t* data);
-wav_audio_t* wav_load(const uint8_t* data);
+wav_audio_t* wav_new(const uint8_t* data);
+wav_result_t* wav_load(wav_audio_t* wav);
 void wav_reset(wav_audio_t* wav);
 int wav_is_eof(const wav_audio_t* wav);
 int wav_is_stereo(const wav_audio_t* wav);
